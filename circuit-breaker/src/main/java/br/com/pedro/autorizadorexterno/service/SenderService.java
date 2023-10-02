@@ -5,7 +5,6 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.vavr.control.Try;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -28,23 +27,28 @@ public class SenderService {
         }
     }
 
-    public void enviarEventoAutExtWithCircuitBreaker(ExitMessage exitMessage) throws Exception {
+    public void enviarEventoAutExtWithCircuitBreaker(ExitMessage exitMessage) {
         String url = String.format("%s/%s", URL_SAIDA, exitMessage.getUrl());
         CircuitBreaker circuitBreaker = CircuitBreakerService.getCircuitBreaker(url);
         Try<String> result = Try.ofSupplier(CircuitBreaker.decorateSupplier(circuitBreaker,
-                () -> {
-                    try {
-                        return restTemplate.postForEntity(url, exitMessage, String.class).getBody();
-                    } catch (Exception e) {
-                        throw e;
-                    }
-                }));
+                () -> restTemplate.postForEntity(url, exitMessage, String.class).getBody()));
         CircuitBreakerService.circuitBreakerMap.put(exitMessage.getUrl(), circuitBreaker);
         if (result.isSuccess()) {
             log.info(String.format("Mensagem enviada para autorizador externo %s", exitMessage.getNomeAutorizar()));
             return;
         }
+
+        if (circuitBreaker.getState().toString().equals("OPEN")){
+            fallbackEnvioMensagem(exitMessage);
+        }
+
         log.error("Falha de conexão");
+    }
+
+    private String fallbackEnvioMensagem(ExitMessage exitMessage) {
+        log.info(String.format("Fallback ativo para emissor %s. Enviando dados para barramento",
+                exitMessage.getNomeAutorizar()));
+        return null;
     }
 
 }

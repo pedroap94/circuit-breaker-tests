@@ -14,23 +14,29 @@ public class AutExtService {
     final ModelMapper modelMapper;
     private SenderService sender;
 
-    //TODO adicionar o circuit breaker aqui
     public void gerarEventoAutExt(EntryMessage entryMessage) {
 
             ExitMessage exitMessage = mountExitContract(entryMessage);
+            if (CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getState().toString().equals("OPEN")) {
+                log.info(String.format("CircuitBreaker ativo para %s.", exitMessage.getNomeAutorizar()));
+                return;
+            }
+            chamarSender(exitMessage);
+    }
+
+    private void chamarSender(ExitMessage exitMessage){
         try {
             sender.enviarEventoAutExtWithCircuitBreaker(exitMessage);
             log.info(String.format("Estado do circuit breaker para %s: %s",
-                    entryMessage.getNomeAutorizar(),
+                    exitMessage.getNomeAutorizar(),
                     CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getState()));
             log.info(String.valueOf(CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getMetrics().getNumberOfFailedCalls()));
             log.info(String.valueOf(CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getMetrics().getNumberOfSuccessfulCalls()));
         } catch (Exception e) {
             log.error(String.format("Estado do circuit breaker para %s: %s",
-                    entryMessage.getNomeAutorizar(),
+                    exitMessage.getNomeAutorizar(),
                     CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getState()));
         }
-
     }
 
     private ExitMessage mountExitContract(EntryMessage entryMessage) {

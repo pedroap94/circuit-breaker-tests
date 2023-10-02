@@ -24,9 +24,9 @@ public class CircuitBreakerService {
             // Cria um novo circuit breaker com a configuração padrão ou personalizada
             CircuitBreakerConfig config = CircuitBreakerConfig.custom()
                     .failureRateThreshold(20)
-                    .minimumNumberOfCalls(5)
-                    .slidingWindowSize(5)
-                    .waitIntervalFunctionInOpenState(IntervalFunction.of(100000L))
+                    .minimumNumberOfCalls(10)
+                    .slidingWindowSize(10)
+                    .waitIntervalFunctionInOpenState(IntervalFunction.of(30000L))
                     .build();
             CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(config);
             CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(url);
