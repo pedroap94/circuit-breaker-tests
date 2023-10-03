@@ -26,7 +26,7 @@ public class CircuitBreakerService {
                     .failureRateThreshold(20)
                     .minimumNumberOfCalls(10)
                     .slidingWindowSize(10)
-                    .waitIntervalFunctionInOpenState(IntervalFunction.of(30000L))
+                    .waitIntervalFunctionInOpenState(IntervalFunction.of(5000L))
                     .build();
             CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(config);
             CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(url);

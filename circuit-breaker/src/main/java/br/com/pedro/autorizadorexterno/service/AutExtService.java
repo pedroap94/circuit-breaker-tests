@@ -2,6 +2,7 @@ package br.com.pedro.autorizadorexterno.service;
 
 import br.com.pedro.autorizadorexterno.model.EntryMessage;
 import br.com.pedro.autorizadorexterno.model.ExitMessage;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -16,15 +17,18 @@ public class AutExtService {
 
     public void gerarEventoAutExt(EntryMessage entryMessage) {
 
-            ExitMessage exitMessage = mountExitContract(entryMessage);
-            if (CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl()).getState().toString().equals("OPEN")) {
+        ExitMessage exitMessage = mountExitContract(entryMessage);
+        CircuitBreaker circuitBreaker = CircuitBreakerService.getCircuitBreaker(exitMessage.getUrl());
+        circuitBreaker.getEventPublisher().onStateTransition(e -> {
+            CircuitBreaker.State toState = e.getStateTransition().getToState();
+            if (toState.equals(CircuitBreaker.State.OPEN)) {
                 log.info(String.format("CircuitBreaker ativo para %s.", exitMessage.getNomeAutorizar()));
-                return;
             }
-            chamarSender(exitMessage);
+        });
+        chamarSender(exitMessage);
     }
 
-    private void chamarSender(ExitMessage exitMessage){
+    private void chamarSender(ExitMessage exitMessage) {
         try {
             sender.enviarEventoAutExtWithCircuitBreaker(exitMessage);
             log.info(String.format("Estado do circuit breaker para %s: %s",
